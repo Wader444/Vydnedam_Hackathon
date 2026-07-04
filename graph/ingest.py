@@ -11,6 +11,15 @@ from dotenv import load_dotenv
 from jsonschema import validate, ValidationError
 from neo4j import GraphDatabase, Driver, Session, Transaction
 
+# Import normalize_path from shared.path_utils with defensive fallback
+try:
+    from shared.path_utils import normalize_path
+except ImportError:
+    # Standardize to forward slashes if shared module is not yet populated
+    def normalize_path(path: str, repo_root: str) -> str:
+        return path.replace("\\", "/")
+
+
 # Load environment variables from .env
 load_dotenv()
 
@@ -234,6 +243,61 @@ class Neo4jIngestor:
         """
         # Validate data structure before starting transaction
         self.validate_json_data(data)
+
+        # Defensive path normalization using Person 2's path utility
+        repo_root = os.getenv("REPO_ROOT", os.getcwd())
+
+        # 1. Normalize files
+        for file_data in data.get("files", []):
+            if "path" in file_data:
+                file_data["path"] = normalize_path(file_data["path"], repo_root)
+            if "imports" in file_data:
+                file_data["imports"] = [normalize_path(imp, repo_root) for imp in file_data["imports"]]
+
+        # 2. Normalize functions (file path and id)
+        for fn_data in data.get("functions", []):
+            if "file" in fn_data:
+                fn_data["file"] = normalize_path(fn_data["file"], repo_root)
+            # Rebuild ID based on normalized file path
+            if "name" in fn_data and "file" in fn_data:
+                fn_data["id"] = f"{fn_data['file']}::{fn_data['name']}"
+            elif "id" in fn_data:
+                if "::" in fn_data["id"]:
+                    parts = fn_data["id"].split("::", 1)
+                    parts[0] = normalize_path(parts[0], repo_root)
+                    fn_data["id"] = "::".join(parts)
+
+            # Normalize callee ids inside calls
+            for call_data in fn_data.get("calls", []):
+                if "id" in call_data and "::" in call_data["id"]:
+                    parts = call_data["id"].split("::", 1)
+                    parts[0] = normalize_path(parts[0], repo_root)
+                    call_data["id"] = "::".join(parts)
+
+        # 3. Normalize classes (file path and id)
+        for class_data in data.get("classes", []):
+            if "file" in class_data:
+                class_data["file"] = normalize_path(class_data["file"], repo_root)
+            # Rebuild ID based on normalized file path
+            if "name" in class_data and "file" in class_data:
+                class_data["id"] = f"{class_data['file']}::{class_data['name']}"
+            elif "id" in class_data:
+                if "::" in class_data["id"]:
+                    parts = class_data["id"].split("::", 1)
+                    parts[0] = normalize_path(parts[0], repo_root)
+                    class_data["id"] = "::".join(parts)
+
+            # Normalize method ids
+            if "methods" in class_data:
+                normalized_methods = []
+                for m in class_data["methods"]:
+                    if "::" in m:
+                        parts = m.split("::", 1)
+                        normalized_methods.append(f"{normalize_path(parts[0], repo_root)}::{parts[1]}")
+                    else:
+                        normalized_methods.append(m)
+                class_data["methods"] = normalized_methods
+
 
         if not self.driver:
             raise DatabaseConnectionError("Driver not initialized. Please connect() first.")
