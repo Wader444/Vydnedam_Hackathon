@@ -132,6 +132,66 @@ class InvalidJSONError(GraphEngineError):
     pass
 
 
+def _normalize_payload(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Accepts both the simple format (Person 2's codebase_graph.json) and the full
+    schema format (data/sample_contract.json) and normalises them into the single
+    structure that Neo4jIngestor.validate_json_data() + ingest() expect.
+
+    Simple format (functions-only list or object):
+        [{"name": ..., "file": ..., "calls": [str, ...]}, ...]
+        or {"functions": [{"name": ..., "file": ..., "calls": [str, ...]}, ...]}
+
+    Full format (already validated structure):
+        {"files": [...], "functions": [...], "classes": [...]}
+
+    Transformations applied to simple-format functions:
+        - Adds empty top-level "files": []  and "classes": [] if missing.
+        - Builds "id" as "<file>::<name>" when absent.
+        - Defaults "start_line" and "end_line" to 0 when absent.
+        - Converts "calls" string lists to the [{"id":..., "line_number":0,
+          "call_type":"direct"}] object list the schema requires.
+    """
+    # Handle bare list format: [{...}, {...}]
+    if isinstance(data, list):
+        data = {"functions": data}
+
+    # Auto-fill missing top-level sections
+    data.setdefault("files", [])
+    data.setdefault("classes", [])
+    data.setdefault("functions", [])
+
+    normalised_functions = []
+    for fn in data["functions"]:
+        fn = dict(fn)  # shallow copy — don't mutate caller's data
+
+        # Build missing id
+        if "id" not in fn:
+            fn["id"] = f"{fn.get('file', 'unknown')}::{fn.get('name', 'unknown')}"
+
+        # Default line numbers
+        fn.setdefault("start_line", 0)
+        fn.setdefault("end_line", 0)
+
+        # Promote calls from strings to required object format
+        raw_calls = fn.get("calls", [])
+        if raw_calls and isinstance(raw_calls[0], str):
+            fn["calls"] = [
+                {
+                    "id": callee,          # will be rebuilt by normalize_path later
+                    "line_number": 0,
+                    "call_type": "direct"
+                }
+                for callee in raw_calls
+            ]
+
+        normalised_functions.append(fn)
+
+    data["functions"] = normalised_functions
+    return data
+
+
+
 class Neo4jIngestor:
     """
     Ingestor class to connect to a Neo4j instance and import repository metadata.
@@ -254,6 +314,9 @@ class Neo4jIngestor:
             data: The JSON contract metadata dictionary.
             clear_existing: If True, executes DETACH DELETE on the whole graph before ingesting.
         """
+        # Normalise payload — accepts both simple and full-schema formats
+        data = _normalize_payload(data)
+
         # Validate data structure before starting transaction
         self.validate_json_data(data)
 
