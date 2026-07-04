@@ -1,44 +1,29 @@
 {
   "functions": [
     {
+      "name": "parse_file",
+      "file": "parser.py",
+      "calls": []
+    },
+    {
+      "name": "filter_external_calls",
+      "file": "parser.py",
+      "calls": []
+    },
+    {
+      "name": "parse_directory",
+      "file": "parser.py",
+      "calls": ["parse_file", "filter_external_calls"]
+    },
+    {
       "name": "calculate_total",
-      "file": "billing/calculator.py",
+      "file": "test_code.py",
+      "calls": ["apply_tax"]
+    },
+    {
+      "name": "apply_tax",
+      "file": "test_code.py",
       "calls": []
-    },
-    {
-      "name": "apply_discount",
-      "file": "billing/calculator.py",
-      "calls": ["calculate_total"]
-    },
-    {
-      "name": "generate_invoice",
-      "file": "billing/invoice.py",
-      "calls": ["calculate_total", "apply_discount"]
-    },
-    {
-      "name": "send_invoice_email",
-      "file": "notifications/email.py",
-      "calls": ["generate_invoice"]
-    },
-    {
-      "name": "process_checkout",
-      "file": "shop/checkout.py",
-      "calls": ["apply_discount", "generate_invoice", "log_order"]
-    },
-    {
-      "name": "log_order",
-      "file": "shop/checkout.py",
-      "calls": []
-    },
-    {
-      "name": "run_end_of_day_report",
-      "file": "reports/daily.py",
-      "calls": ["calculate_total", "send_invoice_email"]
-    },
-    {
-      "name": "validate_cart",
-      "file": "shop/cart.py",
-      "calls": ["calculate_total"]
     }
   ]
 }

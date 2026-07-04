@@ -4,9 +4,22 @@ Handles environment loading, JSON validation, database connection, and transacti
 """
 
 import os
+import sys
 import json
 import logging
 from typing import Any, Dict, List, Optional
+
+# ── Bulletproof path resolution ────────────────────────────────────────────────────────
+# Ensures `shared/` is importable regardless of invocation context:
+#   python -m graph.ingest   (module mode, CWD may not be project root)
+#   python graph/ingest.py   (direct script run)
+#   pytest tests/            (test runner from project root)
+# __file__ -> .../Graph-engine/graph/ingest.py
+# dirname(dirname(...)) -> .../Graph-engine/   <- project root
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 from dotenv import load_dotenv
 from jsonschema import validate, ValidationError
 from neo4j import GraphDatabase, Driver, Session, Transaction
