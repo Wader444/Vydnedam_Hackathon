@@ -141,7 +141,39 @@ def get_modified_functions() -> list:
                 
     return sorted(list(modified_functions))
 
+def get_modified_function_ids() -> list:
+    """
+    Determines which top-level functions have been modified or added in the active git repository,
+    returning their standardized IDs format: '{relative_file_path}::{function_name}'.
+    Uses forward slashes for relative file paths to ensure cross-platform database compatibility.
+    """
+    repo_root = get_git_repo_root()
+    diff_text = get_git_diff()
+    modified_lines = parse_git_diff(diff_text)
+    
+    language = tree_sitter.Language(tree_sitter_python.language())
+    modified_ids = set()
+    
+    for rel_path, lines in modified_lines.items():
+        if not lines:
+            continue
+        abs_path = os.path.join(repo_root, rel_path)
+        function_ranges = get_function_line_ranges(abs_path, language)
+        
+        for func in function_ranges:
+            # Check if any modified/added line number falls inside the function definition range
+            if any(func['start'] <= line <= func['end'] for line in lines):
+                # Standardize to forward slashes for cross-platform DB safety
+                db_file_path = rel_path.replace("\\", "/")
+                modified_ids.add(f"{db_file_path}::{func['name']}")
+                
+    return sorted(list(modified_ids))
+
 if __name__ == '__main__':
     modified_funcs = get_modified_functions()
+    modified_ids = get_modified_function_ids()
     import json
+    print("Modified functions:")
     print(json.dumps(modified_funcs, indent=2))
+    print("Modified function IDs:")
+    print(json.dumps(modified_ids, indent=2))
