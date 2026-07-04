@@ -13,24 +13,60 @@ def extract_symbols(filepath: str) -> dict:
     Standardized dictionary format for graph databases.
     """
     if not os.path.exists(filepath):
-        return {"path": filepath, "classes": [], "functions": []}
+        return {"path": filepath, "classes": [], "functions": [], "top_level_assignments": []}
 
     try:
         with open(filepath, "rb") as f:
             code = f.read()
     except Exception:
-        return {"path": filepath, "classes": [], "functions": []}
+        return {"path": filepath, "classes": [], "functions": [], "top_level_assignments": []}
 
     tree = parser.parse(code)
     root = tree.root_node
 
     classes = []
     functions = []
+    top_level_assignments = []
 
     def get_node_text(node):
         return node.text.decode('utf-8', errors='ignore')
 
+    def is_top_level(node):
+        curr = node.parent
+        while curr:
+            if curr.type in ('function_definition', 'class_definition'):
+                return False
+            curr = curr.parent
+        return True
+
+    def get_lhs_identifiers(node):
+        identifiers = []
+        if node.type == 'identifier':
+            identifiers.append(get_node_text(node))
+        for child in node.children:
+            identifiers.extend(get_lhs_identifiers(child))
+        return list(set(identifiers))
+
+    def get_identifiers(node):
+        identifiers = []
+        if node.type == 'identifier':
+            identifiers.append(get_node_text(node))
+        for child in node.children:
+            identifiers.extend(get_identifiers(child))
+        return list(set(identifiers))
+
     def walk_tree(node, current_class=None):
+        if node.type == 'assignment' and is_top_level(node):
+            lhs = node.children[0]
+            vars_assigned = get_lhs_identifiers(lhs)
+            start_line = node.start_point[0] + 1
+            end_line = node.end_point[0] + 1
+            top_level_assignments.append({
+                "variables": vars_assigned,
+                "start_line": start_line,
+                "end_line": end_line
+            })
+
         if node.type == 'class_definition':
             class_name = None
             for child in node.children:
@@ -81,14 +117,17 @@ def extract_symbols(filepath: str) -> dict:
                         body_node = child
                         break
                 
+                referenced_identifiers = []
                 if body_node:
                     find_calls(body_node)
+                    referenced_identifiers = get_identifiers(body_node)
 
                 functions.append({
                     "name": func_name,
                     "class": current_class,
                     "file": filepath,
                     "calls": list(set(calls)),
+                    "referenced_identifiers": referenced_identifiers,
                     "start_line": start_line,
                     "end_line": end_line
                 })
@@ -107,7 +146,8 @@ def extract_symbols(filepath: str) -> dict:
     return {
         "path": filepath,
         "classes": classes,
-        "functions": functions
+        "functions": functions,
+        "top_level_assignments": top_level_assignments
     }
 
 def parse_git_diff(diff_output: str) -> dict[str, list[int]]:
@@ -209,18 +249,43 @@ def get_modified_functions(baseline_commit: str = "HEAD") -> dict[str, list[dict
         symbols = extract_symbols(file_path)
         modified_funcs = []
 
+        # 1. Identify which global/module-level variables were modified
+        modified_globals = set()
+        for tla in symbols.get("top_level_assignments", []):
+            start = tla["start_line"]
+            end = tla["end_line"]
+            for line in lines:
+                if start <= line <= end:
+                    for var in tla["variables"]:
+                        modified_globals.add(var)
+                    break
+
+        # 2. Check each function for direct or global modification
         for func in symbols.get("functions", []):
             start = func["start_line"]
             end = func["end_line"]
+            
+            is_modified = False
+            # Check for direct modifications
             for line in lines:
                 if start <= line <= end:
-                    modified_funcs.append({
-                        "name": func["name"],
-                        "class": func["class"],
-                        "file": file_path,
-                        "diff": file_diffs.get(file_path, "")
-                    })
+                    is_modified = True
                     break
+            
+            # Check for referenced global modifications
+            if not is_modified and modified_globals:
+                for ref_id in func.get("referenced_identifiers", []):
+                    if ref_id in modified_globals:
+                        is_modified = True
+                        break
+
+            if is_modified:
+                modified_funcs.append({
+                    "name": func["name"],
+                    "class": func["class"],
+                    "file": file_path,
+                    "diff": file_diffs.get(file_path, "")
+                })
 
         if modified_funcs:
             modified_functions_by_file[file_path] = modified_funcs
