@@ -65,9 +65,14 @@ def parse_file(file_path: str) -> list:
                 if call_name not in calls:
                     calls.append(call_name)
 
+        start_line = func_node.start_point[0] + 1
+        end_line = func_node.end_point[0] + 1
+
         results.append({
             "name": func_name,
             "file": os.path.abspath(file_path),
+            "start_line": start_line,
+            "end_line": end_line,
             "calls": calls
         })
 
