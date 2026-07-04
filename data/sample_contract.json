@@ -1,0 +1,65 @@
+{
+  "files": [
+    {
+      "path": "auth.py",
+      "language": "python",
+      "imports": [
+        "database.py"
+      ]
+    },
+    {
+      "path": "database.py",
+      "language": "python",
+      "imports": []
+    }
+  ],
+
+  "functions": [
+    {
+      "id": "auth.py::authenticate_user",
+      "name": "authenticate_user",
+      "file": "auth.py",
+      "start_line": 12,
+      "end_line": 41,
+      "calls": [
+        {
+          "id": "database.py::validate_token",
+          "line_number": 18,
+          "call_type": "direct"
+        },
+        {
+          "id": "database.py::fetch_user",
+          "line_number": 27,
+          "call_type": "library"
+        }
+      ]
+    },
+    {
+      "id": "database.py::validate_token",
+      "name": "validate_token",
+      "file": "database.py",
+      "start_line": 5,
+      "end_line": 15,
+      "calls": []
+    },
+    {
+      "id": "database.py::fetch_user",
+      "name": "fetch_user",
+      "file": "database.py",
+      "start_line": 18,
+      "end_line": 28,
+      "calls": []
+    }
+  ],
+
+  "classes": [
+    {
+      "id": "auth.py::UserManager",
+      "name": "UserManager",
+      "file": "auth.py",
+      "methods": [
+        "auth.py::authenticate_user"
+      ]
+    }
+  ]
+}

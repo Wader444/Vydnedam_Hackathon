@@ -1,0 +1,17 @@
+[
+  {
+    "name": "authenticate_user",
+    "file": "auth.py",
+    "calls": [
+      "validate_token",
+      "fetch_user_record"
+    ]
+  },
+  {
+    "name": "render_welcome_message",
+    "file": "frontend.py",
+    "calls": [
+      "get_user_id"
+    ]
+  }
+]

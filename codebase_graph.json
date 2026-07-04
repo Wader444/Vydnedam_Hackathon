@@ -1,0 +1,44 @@
+{
+  "functions": [
+    {
+      "name": "calculate_total",
+      "file": "billing/calculator.py",
+      "calls": []
+    },
+    {
+      "name": "apply_discount",
+      "file": "billing/calculator.py",
+      "calls": ["calculate_total"]
+    },
+    {
+      "name": "generate_invoice",
+      "file": "billing/invoice.py",
+      "calls": ["calculate_total", "apply_discount"]
+    },
+    {
+      "name": "send_invoice_email",
+      "file": "notifications/email.py",
+      "calls": ["generate_invoice"]
+    },
+    {
+      "name": "process_checkout",
+      "file": "shop/checkout.py",
+      "calls": ["apply_discount", "generate_invoice", "log_order"]
+    },
+    {
+      "name": "log_order",
+      "file": "shop/checkout.py",
+      "calls": []
+    },
+    {
+      "name": "run_end_of_day_report",
+      "file": "reports/daily.py",
+      "calls": ["calculate_total", "send_invoice_email"]
+    },
+    {
+      "name": "validate_cart",
+      "file": "shop/cart.py",
+      "calls": ["calculate_total"]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+# ============================================================
+# ImpactGraph — Graph Engine .gitignore
+# Python 3.12+ / Neo4j / Docker / Windows
+# ============================================================
+
+# ── Secrets & Credentials ────────────────────────────────────
+# .env holds live database passwords — NEVER commit it.
+# .env.example (no real values) IS safe to commit.
+.env
+
+# ── Python Virtual Environment ───────────────────────────────
+# Hundreds of MB of installed packages — reproducible via requirements.txt.
+venv/
+.venv/
+env/
+ENV/
+
+# ── Python Bytecode & Caches ─────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ── pytest Artifacts ─────────────────────────────────────────
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Runtime Log Files ────────────────────────────────────────
+# Log files are generated at runtime; not source artifacts.
+*.log
+graph_engine.log
+
+# ── OS & Editor Noise ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ── Build & Distribution ─────────────────────────────────────
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# ── Type Checker & Linter Caches ─────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# ── Neo4j Docker Volumes (if mounted locally) ────────────────
+neo4j_data/
+neo4j_logs/
+neo4j_plugins/
+neo4j_import/

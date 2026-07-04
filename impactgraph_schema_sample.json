@@ -1,0 +1,88 @@
+{
+  "_schema_notes": {
+    "purpose": "This is the agreed data contract between Person 2 (extraction) and Person 1 (Neo4j ingestion). Person 2's real extraction output must match this exact shape. Keep this file checked into the repo as the reference example.",
+    "id_rule": "Every function and class 'id' field must be built as '<file>::<name>', e.g. 'auth.py::authenticate_user'. This is the unique key used for MERGE in Neo4j, so two functions with the same name in different files never collide.",
+    "calls_rule": "The 'calls' list contains plain function names as strings (not full ids). The ingestion script resolves these by name across the whole graph. If a name matches multiple functions in different files, all matches get a CALLS edge — acceptable for hackathon scope."
+  },
+  "files": [
+    {
+      "path": "auth.py",
+      "language": "python",
+      "imports": ["utils.py"],
+      "classes": [],
+      "functions": [
+        {
+          "id": "auth.py::authenticate_user",
+          "name": "authenticate_user",
+          "start_line": 4,
+          "end_line": 18,
+          "calls": ["validate_token", "fetch_user_record"]
+        },
+        {
+          "id": "auth.py::fetch_user_record",
+          "name": "fetch_user_record",
+          "start_line": 20,
+          "end_line": 30,
+          "calls": ["build_user_response"]
+        },
+        {
+          "id": "auth.py::build_user_response",
+          "name": "build_user_response",
+          "start_line": 32,
+          "end_line": 40,
+          "calls": []
+        }
+      ]
+    },
+    {
+      "path": "frontend.py",
+      "language": "python",
+      "imports": ["auth.py"],
+      "classes": [],
+      "functions": [
+        {
+          "id": "frontend.py::render_welcome_message",
+          "name": "render_welcome_message",
+          "start_line": 6,
+          "end_line": 15,
+          "calls": ["get_user_id"]
+        },
+        {
+          "id": "frontend.py::get_user_id",
+          "name": "get_user_id",
+          "start_line": 17,
+          "end_line": 22,
+          "calls": []
+        }
+      ]
+    },
+    {
+      "path": "utils.py",
+      "language": "python",
+      "imports": [],
+      "classes": [
+        {
+          "id": "utils.py::TokenManager",
+          "name": "TokenManager",
+          "methods": ["validate_token", "generate_token"]
+        }
+      ],
+      "functions": [
+        {
+          "id": "utils.py::validate_token",
+          "name": "validate_token",
+          "start_line": 5,
+          "end_line": 12,
+          "calls": []
+        },
+        {
+          "id": "utils.py::generate_token",
+          "name": "generate_token",
+          "start_line": 14,
+          "end_line": 20,
+          "calls": []
+        }
+      ]
+    }
+  ]
+}
