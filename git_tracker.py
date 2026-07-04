@@ -4,6 +4,8 @@ import os
 import sys
 import tree_sitter
 import tree_sitter_python
+from shared.path_utils import normalize_path
+from parser import REPO_ROOT
 
 def get_git_repo_root() -> str:
     """
@@ -163,8 +165,7 @@ def get_modified_function_ids() -> list:
         for func in function_ranges:
             # Check if any modified/added line number falls inside the function definition range
             if any(func['start'] <= line <= func['end'] for line in lines):
-                # Standardize to forward slashes for cross-platform DB safety
-                db_file_path = rel_path.replace("\\", "/")
+                db_file_path = normalize_path(abs_path, REPO_ROOT)
                 modified_ids.add(f"{db_file_path}::{func['name']}")
                 
     return sorted(list(modified_ids))

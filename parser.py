@@ -1,8 +1,20 @@
 import json
 import os
 import sys
+import subprocess
 import tree_sitter
 import tree_sitter_python
+from shared.path_utils import normalize_path
+
+def get_repo_root() -> str:
+    try:
+        result = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True, check=True)
+        return os.path.abspath(result.stdout.strip())
+    except Exception:
+        return os.path.dirname(os.path.abspath(__file__))
+
+REPO_ROOT = get_repo_root()
+
 
 def parse_file(file_path: str) -> list:
     """
@@ -70,7 +82,7 @@ def parse_file(file_path: str) -> list:
 
         results.append({
             "name": func_name,
-            "file": os.path.abspath(file_path),
+            "file": normalize_path(file_path, REPO_ROOT),
             "start_line": start_line,
             "end_line": end_line,
             "calls": calls
