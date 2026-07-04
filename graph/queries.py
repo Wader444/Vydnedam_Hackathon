@@ -253,11 +253,11 @@ class GraphQueryEngine:
         Calculates count overview for Files, Functions, Classes, Imports and Calls.
         """
         cypher = """
-        CALL { MATCH (f:File) RETURN count(f) AS file_count }
-        CALL { MATCH (fn:Function) RETURN count(fn) AS function_count }
-        CALL { MATCH (c:Class) RETURN count(c) AS class_count }
-        CALL { MATCH ()-[r:IMPORTS]->() RETURN count(r) AS import_count }
-        CALL { MATCH ()-[r:CALLS]->() RETURN count(r) AS call_count }
+        CALL () { MATCH (f:File) RETURN count(f) AS file_count }
+        CALL () { MATCH (fn:Function) RETURN count(fn) AS function_count }
+        CALL () { MATCH (c:Class) RETURN count(c) AS class_count }
+        CALL () { MATCH ()-[r:IMPORTS]-() RETURN count(r) AS import_count }
+        CALL () { MATCH ()-[r:CALLS]-()   RETURN count(r) AS call_count   }
         RETURN file_count, function_count, class_count, import_count, call_count
         """
         records = self._execute_read_query(cypher)

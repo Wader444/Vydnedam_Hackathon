@@ -127,9 +127,13 @@ def ingest_codebase_graph(json_path: str, clear_existing: bool = False) -> None:
 
             # ── 2a. Optional clean slate ──────────────────────────────────────
             if clear_existing:
-                logger.warning("Clearing all existing nodes and relationships …")
-                session.run("MATCH (n) DETACH DELETE n")
-                logger.info("Graph cleared.")
+                logger.warning("Clearing all existing nodes and relationships ...")
+                try:
+                    session.run("MATCH (n) DETACH DELETE n")
+                    logger.info("Graph cleared.")
+                except Exception as clear_exc:
+                    logger.error("Failed to clear graph: %s", clear_exc)
+                    raise
 
             # ── 2b. Pass 1: MERGE Function nodes ─────────────────────────────
             # UNWIND sends the entire list in a single round-trip to Neo4j,
@@ -183,6 +187,36 @@ def ingest_codebase_graph(json_path: str, clear_existing: bool = False) -> None:
         driver.close()
 
     logger.info("Ingestion complete.")
+
+
+# ─── Person 2 Handoff Alias ───────────────────────────────────────────────────
+
+def ingest_ast_data(json_path: str, clear_existing: bool = False) -> None:
+    """
+    Alias for ingest_codebase_graph() using the name agreed with Person 2.
+
+    Expected JSON contract from Person 2's AST parser:
+    {
+        "functions": [
+            {
+                "name":       str,   # function identifier — used as MERGE key
+                "file":       str,   # relative source path, e.g. "billing/calc.py"
+                "calls":      list,  # list of callee name strings
+                "start_line": int,   # optional — stored as metadata
+                "end_line":   int    # optional — stored as metadata
+            },
+            ...
+        ]
+    }
+
+    Any extra top-level keys ("classes", "files", etc.) are ignored safely.
+    Missing optional fields (start_line, end_line) default to None in the graph.
+
+    Args:
+        json_path:      Absolute or relative path to the JSON file.
+        clear_existing: Wipe all nodes/rels before ingesting (default False).
+    """
+    return ingest_codebase_graph(json_path, clear_existing)
 
 
 # ─── Blast Radius Query ───────────────────────────────────────────────────────
@@ -243,21 +277,40 @@ def get_blast_radius(changed_function_name: str, max_depth: int = 4) -> List[Dic
 # ─── Execution Guard ──────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    JSON_FILE = "codebase_graph.json"
-    TARGET_FUNCTION = "calculate_total"
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="ImpactGraph — ingest codebase_graph.json and query blast radius."
+    )
+    parser.add_argument(
+        "--json",
+        default="codebase_graph.json",
+        help="Path to the JSON dependency file (default: codebase_graph.json)",
+    )
+    parser.add_argument(
+        "--function",
+        default="calculate_total",
+        help="Function name to query blast radius for (default: calculate_total)",
+    )
+    parser.add_argument(
+        "--clear",
+        action="store_true",
+        help="Wipe the graph before ingesting (default: False)",
+    )
+    args = parser.parse_args()
 
     # Step 1: Ingest the JSON.
-    # Set clear_existing=True for a clean demo reset on every run.
-    ingest_codebase_graph(JSON_FILE, clear_existing=True)
+    ingest_codebase_graph(args.json, clear_existing=args.clear)
 
     # Step 2: Query blast radius immediately after ingestion.
-    blast_radius = get_blast_radius(TARGET_FUNCTION)
+    blast_radius = get_blast_radius(args.function)
 
     # Step 3: Print clean output for Person 3 handoff verification.
-    print(f"\n--- Blast Radius for '{TARGET_FUNCTION}' ---")
+    print(f"\n--- Blast Radius for '{args.function}' ---")
     if blast_radius:
         for dep in blast_radius:
             print(dep)
     else:
         print("(No dependents found — function is a leaf node or not in graph.)")
     print(f"\nTotal affected functions: {len(blast_radius)}")
+
